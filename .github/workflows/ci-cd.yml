@@ -37,6 +37,12 @@ jobs:
       run: |
         pip install bandit
         bandit -r .
+        
+    - name: Stop release if critical vulnerabilities found
+      if: failure()
+      run: |
+        echo "Critical vulnerabilities found, stopping release!"
+        exit 1
 
     - name: Run dynamic analysis (OWASP ZAP)
       run: |
@@ -52,7 +58,7 @@ jobs:
         curl -s https://raw.githubusercontent.com/hadolint/hadolint/master/hadolint-linux-amd64 -o /usr/local/bin/hadolint
         chmod +x /usr/local/bin/hadolint
         hadolint Dockerfile
-
+        
     - name: Add comment with Bandit report to PR
       uses: peter-evans/create-or-update-comment@v2
         with:
@@ -60,3 +66,4 @@ jobs:
     body: |
       **Bandit Analysis Results:**
       ${{ steps.bandit.outputs.report }}
+ 
