@@ -53,12 +53,6 @@ jobs:
         chmod +x /usr/local/bin/hadolint
         hadolint Dockerfile
 
-    - name: Stop release if critical vulnerabilities found
-      if: failure()
-      run: |
-        echo "Critical vulnerabilities found, stopping release!"
-        exit 1
-
     - name: Add comment with Bandit report to PR
       uses: peter-evans/create-or-update-comment@v2
         with:
