@@ -1,160 +1,181 @@
-# DefectDojo
+# **Безопасный CI/CD Пайплайн для Open-Source Проекта с использованием Django-DefectDojo**
 
-<table>
-    <tr styl="margin: 0; position: absolute; top: 50%; -ms-transform: translateY(-50%); transform: translateY(-50%);">
-        <th>
-            <a href="https://opensourcesecurityindex.io/" target="_blank" rel="noopener">
-                <img style="width: 282px; height: 56px" src="https://opensourcesecurityindex.io/badge.svg"
-                alt="Open Source Security Index - Fastest Growing Open Source Security Projects" width="282" height="56" />
-            </a>
-        </th>
-        <th>
-            <p>
-                <a href="https://www.owasp.org/index.php/OWASP_DefectDojo_Project"><img src="https://img.shields.io/badge/owasp-flagship%20project-orange.svg" alt="OWASP Flagship"></a>
-                <a href="https://github.com/DefectDojo/django-DefectDojo/releases/latest"><img src="https://img.shields.io/github/release/DefectDojo/django-DefectDojo.svg" alt="GitHub release"></a>
-                <a href="https://www.youtube.com/channel/UCWw9qzqptiIvTqSqhOFuCuQ"><img src="https://img.shields.io/badge/youtube-subscribe-%23c4302b.svg" alt="YouTube Subscribe"></a>
-                <a href="https://twitter.com/defectdojo/"><img src="https://img.shields.io/twitter/follow/defectdojo.svg?style=social&amp;label=Follow" alt="Twitter Follow"></a>
-            </p>
-            <p>
-                <a href="https://github.com/DefectDojo/django-DefectDojo/actions"><img src="https://github.com/DefectDojo/django-DefectDojo/actions/workflows/unit-tests.yml/badge.svg?branch=master" alt="Unit Tests"></a>
-                <a href="https://github.com/DefectDojo/django-DefectDojo/actions"><img src="https://github.com/DefectDojo/django-DefectDojo/actions/workflows/integration-tests.yml/badge.svg?branch=master" alt="Integration Tests"></a>
-                <a href="https://bestpractices.coreinfrastructure.org/projects/2098"><img src="https://bestpractices.coreinfrastructure.org/projects/2098/badge" alt="CII Best Practices"></a>
-            </p>
-        </th>
-    </tr>
- </table>
+## **Описание**
 
-![Screenshot of DefectDojo](https://raw.githubusercontent.com/DefectDojo/django-DefectDojo/dev/docs/assets/images/screenshot1.png)
+Этот репозиторий содержит проект с настройкой безопасного CI/CD пайплайна для веб-приложения с использованием **Django-DefectDojo** и других инструментов для анализа безопасности кода и конфигурации. Цель пайплайна — интегрировать тесты безопасности в процессе разработки и доставки кода, чтобы минимизировать риски уязвимостей.
 
-[DefectDojo](https://www.defectdojo.com/) is a DevSecOps, ASPM (application security posture management), and
-vulnerability management tool.  DefectDojo orchestrates end-to-end security testing, vulnerability tracking,
-deduplication, remediation, and reporting.
+Процесс включает в себя использование инструментов для статического и динамического анализа, проверки секретов, проверок конфигураций и механизма блокировки релиза при нахождении критических уязвимостей.
 
-## Demo
+## **Цели проекта**
 
-Try out DefectDojo on our demo server at [demo.defectdojo.org](https://demo.defectdojo.org)
+- Настроить безопасный пайплайн CI/CD для проекта.
+- Интегрировать инструменты для поиска уязвимостей на всех этапах разработки.
+- Использовать инструменты как для статического (SAST), так и для динамического анализа (DAST).
+- Блокировать релизы с критическими уязвимостями.
+- Автоматически проверять секреты в репозитории и конфигурационные файлы.
 
-Log in with username `admin` and password `1Defectdojo@demo#appsec`. Please note that the demo is publicly accessible
-and regularly reset. Do not put sensitive data in the demo.
+---
 
-## Quick Start for Compose V2
+## **Этапы Настройки Пайплайна**
 
-From July 2023 Compose V1 [stopped receiving updates](https://docs.docker.com/compose/reference/).
+### **1. CI/CD Пайплайн (GitHub Actions)**
 
-Compose V2 integrates compose functions into the Docker platform, continuing to support most of the previous
-docker-compose features and flags. You can run Compose V2 by replacing the hyphen (-) with a space, using
-`docker compose` instead of `docker-compose`.
+Цель: Автоматическая сборка и доставка программного обеспечения с помощью GitHub Actions.
 
-```sh
-# Clone the project
-git clone https://github.com/DefectDojo/django-DefectDojo
-cd django-DefectDojo
+- Репозиторий настроен так, чтобы запускать пайплайн на каждом пуше в ветку `main` и при создании pull request.
+- Workflow включает установку зависимостей, выполнение тестов, проверку на уязвимости и успешную доставку кода.
 
-# Check if your installed toolkit is compatible
-./docker/docker-compose-check.sh
+Пример конфигурации GitHub Actions:
+```yaml
+name: CI Pipeline
 
-# Building Docker images
-docker compose build
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
-# Run the application (for other profiles besides postgres-redis see  
-# https://github.com/DefectDojo/django-DefectDojo/blob/dev/readme-docs/DOCKER.md)
-docker compose up -d
-
-# Obtain admin credentials. The initializer can take up to 3 minutes to run.
-# Use docker compose logs -f initializer to track its progress.
-docker compose logs initializer | grep "Admin password:"
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run tests
+        run: |
+          pytest tests/
 ```
 
-## For Docker Compose V1
+---
 
-You can run Compose V1 by calling `docker-compose` (by adding the hyphen (-) between `docker compose`). 
+### **2. Статический Анализ Кода (SAST) с Bandit**
 
-Following commands are using original version so you might need to adjust them:
-```sh
-docker/docker-compose-check.sh
-docker/entrypoint-initializer.sh
-docker/setEnv.sh
+Цель: Проверка Python-кода на наличие уязвимостей с помощью инструмента **Bandit**.
+
+- Используется для поиска проблем безопасности в исходном коде проекта.
+- Результаты анализа отображаются в отчёте и могут быть интегрированы в Pull Request.
+
+Пример конфигурации для Bandit в GitHub Actions:
+```yaml
+- name: Run static analysis (Bandit)
+  run: |
+    pip install bandit
+    bandit -r .
 ```
 
-Navigate to `http://localhost:8080` to see your new instance!
+---
 
-## Documentation
+### **3. Динамический Анализ Приложения (DAST) с OWASP ZAP**
 
-* [Official Docs](https://docs.defectdojo.com/)
-* [REST APIs](https://docs.defectdojo.com/en/open_source/api-v2-docs/)
-* [Client APIs and Wrappers](https://docs.defectdojo.com/en/open_source/api-v2-docs/#clients--api-wrappers)
-* Authentication options:
-    * [OAuth2/SAML2](https://docs.defectdojo.com/en/open_source/archived_docs/integrations/social-authentication/)
-    * [LDAP](https://docs.defectdojo.com/en/open_source/ldap-authentication/)
-* [Supported tools](https://docs.defectdojo.com/en/connecting_your_tools/parsers/)
+Цель: Динамическое сканирование веб-приложения для выявления уязвимостей.
 
-## Supported Installation Options
+- **OWASP ZAP** используется для сканирования веб-приложений.
+- Запуск сканирования производится в Docker контейнере, сканируя URL, указывающий на развернутую версию приложения.
 
-* [Docker / Docker Compose](readme-docs/DOCKER.md)
-* [SaaS](https://www.defectdojo.com/) - Includes Support & Supports the Project
+Пример конфигурации для OWASP ZAP в GitHub Actions:
+```yaml
+- name: Run dynamic analysis (OWASP ZAP)
+  run: |
+    docker run -t owasp/zap2docker-stable zap-full-scan.py -t http://your-vps-ip/
+```
 
-## Community, Getting Involved, and Updates
+---
 
-[<img src="https://raw.githubusercontent.com/DefectDojo/django-DefectDojo/dev/docs/static/images/slack-logo-icon.png" alt="Slack" height="50"/>](https://owasp.org/slack/invite)
-[<img src="https://raw.githubusercontent.com/DefectDojo/django-DefectDojo/dev/docs/static/images/Linkedin-logo-icon-png.png" alt="LinkedIn" height="50"/>](https://www.linkedin.com/company/defectdojo)
-[<img src="https://raw.githubusercontent.com/DefectDojo/django-DefectDojo/dev/docs/static/images/Twitter_Logo.png" alt="Twitter" height="50"/>](https://twitter.com/defectdojo)
-[<img src="https://raw.githubusercontent.com/DefectDojo/django-DefectDojo/dev/docs/static/images/YouTube-Emblem.png" alt="Youtube" height="50"/>](https://www.youtube.com/channel/UCWw9qzqptiIvTqSqhOFuCuQ)
+### **4. Проверка на Секреты и Конфигурации**
 
-[Join the OWASP Slack community](https://owasp.org/slack/invite) and participate in the discussion! You can find us in
-our channel there, [#defectdojo](https://owasp.slack.com/channels/defectdojo). Follow DefectDojo on
-[Twitter](https://twitter.com/defectdojo), [LinkedIn](https://www.linkedin.com/company/defectdojo), and
-[YouTube](https://www.youtube.com/channel/UCWw9qzqptiIvTqSqhOFuCuQ) for project updates!
+Цель: Проверка репозитория на наличие секретов и уязвимостей в Docker-конфигурациях.
 
-## Contributing
+- **TruffleHog** используется для поиска секретных ключей и токенов в репозитории.
+- **Hadolint** используется для проверки Dockerfile и других конфигурационных файлов на уязвимости.
 
-:warning: We have instituted a [feature freeze](https://github.com/DefectDojo/django-DefectDojo/discussions/8002) on v2
-of DefectDojo as we begin work on v3. Please see our [contributing guidelines](readme-docs/CONTRIBUTING.md) for more
-information. Check out our latest update on v3 [here](https://github.com/DefectDojo/django-DefectDojo/discussions/8974).
+Пример конфигурации для TruffleHog и Hadolint:
+```yaml
+- name: Run secret scanning (TruffleHog)
+  run: |
+    pip install truffleHog
+    trufflehog --json . > trufflehog-results.json
 
-## Pro Edition
-[Upgrade to DefectDojo Pro](https://www.defectdojo.com/) today to take your DevSecOps to 11. DefectDojo Pro is
-designed to meet you wherever you are on your security journey and help you scale, with enhanced dashboards, additional
-smart features, tunable deduplication, and support from DevSecOps experts.
+- name: Run Hadolint for Dockerfile
+  run: |
+    curl -s https://raw.githubusercontent.com/hadolint/hadolint/master/hadolint-linux-amd64 -o /usr/local/bin/hadolint
+    chmod +x /usr/local/bin/hadolint
+    hadolint Dockerfile
+```
 
-Alternatively, for information please email info@defectdojo.com
+---
 
-## About Us
+### **5. Блокировка Релиза при Критических Уязвимостях**
 
-DefectDojo is maintained by:
-* Greg Anderson ([@devGregA](https://github.com/devgrega) | [LinkedIn](https://www.linkedin.com/in/g-anderson/))
-* Matt Tesauro ([@mtesauro](https://github.com/mtesauro) | [LinkedIn](https://www.linkedin.com/in/matttesauro/) |
-  [@matt_tesauro](https://twitter.com/matt_tesauro))
+Цель: Остановка релиза, если на этапе статического или динамического тестирования обнаружены серьёзные уязвимости.
 
-Core Moderators can help you with pull requests or feedback on dev ideas:
-* Cody Maffucci ([@Maffooch](https://github.com/maffooch) | [LinkedIn](https://www.linkedin.com/in/cody-maffucci))
+- При обнаружении критических уязвимостей на любом из этапов, релиз автоматически блокируется с помощью механизма GitHub Actions.
 
-Moderators can help you with pull requests or feedback on dev ideas:
-* Charles Neill ([@cneill](https://github.com/cneill) | [@ccneill](https://twitter.com/ccneill))
-* Jay Paz ([@jjpaz](https://twitter.com/jjpaz))
-* Blake Owens ([@blakeaowens](https://github.com/blakeaowens))
+Пример конфигурации для блокировки релиза:
+```yaml
+- name: Stop release if critical vulnerabilities found
+  if: failure()
+  run: |
+    echo "Critical vulnerabilities found, stopping release!"
+    exit 1
+```
 
-## Hall of Fame
-* Jannik Jürgens ([@alles-klar](https://github.com/alles-klar)) - Jannik was a long time contributor and moderator for 
-  DefectDojo and made significant contributions to many areas of the platform. Jannik was instrumental in pioneering 
-  and optimizing deployment methods.
-* Valentijn Scholten ([@valentijnscholten](https://github.com/valentijnscholten) |
-  [Sponsor](https://github.com/sponsors/valentijnscholten) |
-  [LinkedIn](https://www.linkedin.com/in/valentijn-scholten/)) - Valentijn served as a core moderator for 3 years.
-  Valentijn's contributions were numerous and extensive. He overhauled, improved, and optimized many parts of the
-  codebase. He consistently fielded questions, provided feedback on pull requests, and provided a helping hand wherever
-  it was needed.
-* Fred Blaise ([@madchap](https://github.com/madchap) | [LinkedIn](https://www.linkedin.com/in/fredblaise/)) - Fred
-  served as a core moderator during a critical time for DefectDojo. He contributed code, helped the team stay organized,
-  and architected important policies and procedures.
-* Aaron Weaver ([@aaronweaver](https://github.com/aaronweaver) | [LinkedIn](https://www.linkedin.com/in/aweaver/)) -
-  Aaron has been a long time contributor and user of DefectDojo. He did the second major UI overhaul and his
-  contributions include automation enhancements, CI/CD engagements, increased metadata at the product level, and many
-  more.
+---
 
-## Security
+## **Используемые Инструменты**
 
-Please report Security issues via our [disclosure policy](readme-docs/SECURITY.md).
+1. **Bandit** — Статический анализатор безопасности для Python, который помогает находить уязвимости в исходном коде.
+2. **OWASP ZAP** — Инструмент для динамического тестирования веб-приложений на наличие уязвимостей.
+3. **TruffleHog** — Поиск секретов (например, API ключей) в репозиториях.
+4. **Hadolint** — Статический анализатор Dockerfile для выявления потенциальных проблем в конфигурации контейнеров.
+5. **GitHub Actions** — Платформа для CI/CD, которая автоматически выполняет различные задачи, такие как сборка, тестирование и проверка кода.
 
-## License
+---
 
-DefectDojo is licensed under the [BSD 3-Clause License](LICENSE.md)
+## **Как настроить и использовать**
+
+1. **Клонируйте репозиторий**:
+   ```bash
+   git clone https://github.com/ваш_репозиторий.git
+   cd ваш_репозиторий
+   ```
+
+2. **Настройка зависимостей**:
+   В проекте используется виртуальное окружение для управления зависимостями. Вы можете создать и активировать виртуальное окружение с помощью следующих команд:
+
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate  # Для Linux/macOS
+   venv\Scripts\activate  # Для Windows
+   ```
+
+   Установите все зависимости:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Запуск тестов и анализа безопасности**:
+   Чтобы вручную запустить анализаторы безопасности, используйте команды:
+
+   - **Статический анализ (Bandit)**:
+     ```bash
+     bandit -r .
+     ```
+
+   - **Динамическое тестирование (OWASP ZAP)**:
+     Для этого нужно запустить контейнер ZAP, указав URL вашего веб-приложения.
+
+---
+
+## **Заключение**
+
+Этот репозиторий представляет собой пример интеграции инструментов безопасности в процесс CI/CD для открытых проектов. Пайплайн настроен для автоматического выявления уязвимостей на разных этапах разработки и развертывания, что повышает безопасность всего процесса.
