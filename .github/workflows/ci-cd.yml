@@ -53,7 +53,7 @@ jobs:
         curl -s https://raw.githubusercontent.com/hadolint/hadolint/master/hadolint-linux-amd64 -o /usr/local/bin/hadolint
         chmod +x /usr/local/bin/hadolint
         hadolint Dockerfile
-        
+
     - name: Add comment with Bandit report to PR
       uses: peter-evans/create-or-update-comment@v2
       with:
@@ -67,5 +67,3 @@ jobs:
       run: |
         echo "Critical vulnerabilities found, stopping release!"
         exit 1
-      
- 
