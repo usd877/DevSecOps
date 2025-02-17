@@ -34,19 +34,14 @@ jobs:
         SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
     - name: Run static analysis (Bandit)
+      id: bandit
       run: |
         pip install bandit
-        bandit -r .
-        
-    - name: Stop release if critical vulnerabilities found
-      if: failure()
-      run: |
-        echo "Critical vulnerabilities found, stopping release!"
-        exit 1
+        bandit -r . --format json -o bandit-report.json
 
     - name: Run dynamic analysis (OWASP ZAP)
       run: |
-        docker run -t owasp/zap2docker-stable zap-full-scan.py -t http://your-vps-ip/
+        docker run -t owasp/zap2docker-stable zap-full-scan.py -t http://your-vps-ip/ -r zap-report.html
 
     - name: Run secret scanning (TruffleHog)
       run: |
@@ -61,9 +56,16 @@ jobs:
         
     - name: Add comment with Bandit report to PR
       uses: peter-evans/create-or-update-comment@v2
-        with:
-    issue-number: ${{ github.event.pull_request.number }}
-    body: |
-      **Bandit Analysis Results:**
-      ${{ steps.bandit.outputs.report }}
+      with:
+        issue-number: ${{ github.event.pull_request.number }}
+        body: |
+          **Bandit Analysis Results:**
+          $(cat bandit-report.json)
+
+    - name: Stop release if critical vulnerabilities found
+      if: failure()
+      run: |
+        echo "Critical vulnerabilities found, stopping release!"
+        exit 1
+      
  
