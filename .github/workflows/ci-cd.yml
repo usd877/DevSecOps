@@ -29,7 +29,7 @@ jobs:
 
     - name: Deploy to VPS
       run: |
-        ssh user@your-vps-ip "cd /path/to/your/project && git pull && docker-compose up -d"
+        ssh root@94.228.112.241 "cd /root/DevSecOps && git pull && docker-compose up -d"
       env:
         SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
@@ -41,7 +41,7 @@ jobs:
 
     - name: Run dynamic analysis (OWASP ZAP)
       run: |
-        docker run -t owasp/zap2docker-stable zap-full-scan.py -t http://your-vps-ip/ -r zap-report.html
+        docker run -t owasp/zap2docker-stable zap-full-scan.py -t http://94.228.112.241/ -r zap-report.html
 
     - name: Run secret scanning (TruffleHog)
       run: |
@@ -60,7 +60,9 @@ jobs:
         issue-number: ${{ github.event.pull_request.number }}
         body: |
           **Bandit Analysis Results:**
-          $(cat bandit-report.json)
+          ```json
+          ${{ steps.bandit.outputs.report }}
+          ```
 
     - name: Stop release if critical vulnerabilities found
       if: failure()
