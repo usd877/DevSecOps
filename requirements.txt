@@ -28,13 +28,13 @@ Markdown==3.7
 openpyxl==3.1.5
 Pillow==11.1.0
 psycopg[c]==3.2.4
-cryptography==44.0.0
+cryptography==44.0.1
 python-dateutil==2.9.0.post0
 pytz==2025.1
 redis==5.2.1
 requests==2.32.3
 sqlalchemy==2.0.37
-urllib3==1.26.18
+urllib3==1.26.19
 uWSGI==2.0.28
 vobject==0.9.9
 whitenoise==5.2.0
