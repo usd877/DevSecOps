@@ -4,8 +4,12 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
+  # 1. Стадия сборки и тестирования
   build:
     runs-on: ubuntu-latest
 
@@ -27,45 +31,117 @@ jobs:
       run: |
         pytest
 
+  # 2. Стадия деплоя
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build  # деплой начинается только после успешных тестов
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
     - name: Deploy to VPS
       run: |
-        ssh root@94.228.112.241 "cd /root/DevSecOps && git pull && docker-compose up -d"
+        ssh -i ~/.ssh/id_rsa root@94.228.112.241 "cd /root/DevSecOps && git pull && docker-compose up -d"
       env:
         SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
-    - name: Run static analysis (Bandit)
-      id: bandit
+  # 3. Стадия статического анализа (Bandit)
+  bandit:
+    runs-on: ubuntu-latest
+    needs: build  # анализы выполняются после успешных тестов
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Install Bandit
       run: |
         pip install bandit
+
+    - name: Run Bandit analysis
+      run: |
         bandit -r . --format json -o bandit-report.json
 
-    - name: Run dynamic analysis (OWASP ZAP)
+    - name: Upload Bandit results
+      uses: actions/upload-artifact@v2
+      with:
+        name: bandit-report
+        path: bandit-report.json
+
+  # 4. Стадия динамического анализа (OWASP ZAP)
+  zap:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+    - name: Run OWASP ZAP Scan
       run: |
         docker run -t owasp/zap2docker-stable zap-full-scan.py -t http://94.228.112.241/ -r zap-report.html
 
-    - name: Run secret scanning (TruffleHog)
+    - name: Upload ZAP results
+      uses: actions/upload-artifact@v2
+      with:
+        name: zap-report
+        path: zap-report.html
+
+  # 5. Стадия анализа на секреты (TruffleHog)
+  trufflehog:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+    - name: Install TruffleHog
       run: |
         pip install truffleHog
+
+    - name: Run TruffleHog scan
+      run: |
         trufflehog --json . > trufflehog-results.json
 
-    - name: Run Hadolint for Dockerfile
+    - name: Upload TruffleHog results
+      uses: actions/upload-artifact@v2
+      with:
+        name: trufflehog-results
+        path: trufflehog-results.json
+
+  # 6. Стадия анализа Dockerfile (Hadolint)
+  hadolint:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+    - name: Install Hadolint
       run: |
         curl -s https://raw.githubusercontent.com/hadolint/hadolint/master/hadolint-linux-amd64 -o /usr/local/bin/hadolint
         chmod +x /usr/local/bin/hadolint
+
+    - name: Run Hadolint analysis
+      run: |
         hadolint Dockerfile
 
-    - name: Add comment with Bandit report to PR
-      uses: peter-evans/create-or-update-comment@v2
-      with:
-        issue-number: ${{ github.event.pull_request.number }}
-        body: |
-          **Bandit Analysis Results:**
-          ```json
-          ${{ steps.bandit.outputs.report }}
-          ```
+  # 7. Остановка релиза при критических уязвимостях
+  stop_release:
+    runs-on: ubuntu-latest
+    needs: [bandit, zap, trufflehog, hadolint]  # этот шаг выполняется после всех анализов
 
-    - name: Stop release if critical vulnerabilities found
-      if: failure()
+    steps:
+    - name: Check if any critical vulnerabilities found
       run: |
-        echo "Critical vulnerabilities found, stopping release!"
-        exit 1
+        if grep -q "critical" bandit-report.json; then
+          echo "Critical vulnerabilities found in Bandit report!"
+          exit 1
+        fi
+        if grep -q "critical" zap-report.html; then
+          echo "Critical vulnerabilities found in ZAP report!"
+          exit 1
+        fi
+        if grep -q "high" trufflehog-results.json; then
+          echo "Critical vulnerabilities found in TruffleHog results!"
+          exit 1
+        fi
+        if grep -q "error" hadolint-report.txt; then
+          echo "Error found in Hadolint report!"
+          exit 1
+        fi
+        echo "No critical vulnerabilities found, release continues."
